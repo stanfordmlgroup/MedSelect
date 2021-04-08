@@ -8,12 +8,8 @@ from torchvision import models
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from tqdm import tqdm
-import builder
-
-import sys
-sys.path.append('/deep/u/akshaysm/aihc-winter19-robustness/chexpert-model')
-
-from dataset.su_dataset import SUDataset
+import moco.builder as builder
+from moco.su_dataset import SUDataset
 
 ############## ARGUMENTS FOR SUDATASET ########
 parser = argparse.ArgumentParser(description='Predictor Tranform Image')
@@ -127,6 +123,6 @@ def xray_to_hdf5(csv_path, out_path):
 	
 
 if __name__ == '__main__':
-	xray_to_hdf5('/deep/group/activelearn/data/mimic-cxr/non_holdout.csv',
-		     '/deep/group/activelearn/data/mimic-cxr/non_holdout.hdf5')
+	xray_to_hdf5('/deep/group/activelearn/data/mimic-cxr/non_holdout_positives.csv',
+		     '/deep/u/akshaysm/temp.hdf5')
 

@@ -8,13 +8,12 @@ from torchvision import models
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from tqdm import tqdm
+import builder
 
 import sys
-sys.path.append('/deep/u/akshaysm/aihc-spring20-fewer/moco/')
 sys.path.append('/deep/u/akshaysm/aihc-winter19-robustness/chexpert-model')
 
 from dataset.su_dataset import SUDataset
-import moco.builder
 
 ############## ARGUMENTS FOR SUDATASET ########
 parser = argparse.ArgumentParser(description='Predictor Tranform Image')
@@ -57,7 +56,7 @@ class MoCoEmbedding:
         checkpoint = torch.load(path, map_location="cpu")
         state_dict = dict((key[7:], value)
                           for (key, value) in checkpoint['state_dict'].items())
-        model = moco.builder.MoCo(
+        model = builder.MoCo(
             models.__dict__['resnet18'],
 
             #Parameter from Jingbo's checkpoint - Different from default!!

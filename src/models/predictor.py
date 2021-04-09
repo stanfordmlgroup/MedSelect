@@ -40,82 +40,12 @@ class meanPred(torch.nn.Module):
         """
         super(meanPred,self).__init__()
 
-        self.save_metrics = save_metrics
         self.mode = mode
         self.verbose = verbose
-        self.save_frontal = save_frontal
         self.save_lateral = save_lateral
 
-        if self.save_metrics:
-            self.dist = {}
-            self.FLdist = {}
-            self.dist["max_l2"] = []
-            self.dist["mean_l2"] = []
-            self.dist["range_l2"] = []
-            self.dist["max_fro"] = []
-            self.dist["mean_fro"] = []
-            self.dist["range_fro"] = []
-            self.dist["max_fro_cos"] = []
-            self.dist["mean_fro_cos"] = []
-            self.dist["range_fro_cos"] = []
-            self.dist["max_l1"] = []
-            self.dist["mean_l1"] = []
-            self.dist["max_inf"] = []
-            self.dist["mean_inf"] = []
-            self.dist["max_cos"] = []
-            self.dist["mean_cos"] = []
-            self.dist["range_cos"] = []
-            self.dist["age"] = []
-            self.dist["sex"] = []
-            self.dist["laterality"] = []
-            self.raw_dist = {}
-            self.raw_dist["l2"] = []
-            self.raw_dist["l1"] = []
-            self.raw_dist["inf"] = []
-            self.raw_dist["cos"] = []
-            self.raw_dist["age"] = []
-
-        if self.save_frontal:
-            self.auc = {}
-            self.auc["overall"] = []
-            self.auc["frontal"] = []
-            if self.save_lateral:
-                self.auc["lateral"] = []
-            self.auc["index"]=[]
-
     def clear(self):
-        if self.save_metrics:
-            self.dist["max_l2"] = []
-            self.dist["mean_l2"] = []
-            self.dist["range_l2"] = []
-            self.dist["max_fro"] = []
-            self.dist["mean_fro"] = []
-            self.dist["range_fro"] = []
-            self.dist["max_fro_cos"] = []
-            self.dist["mean_fro_cos"] = []
-            self.dist["range_fro_cos"] = []
-            self.dist["max_l1"] = []
-            self.dist["mean_l1"] = []
-            self.dist["max_inf"] = []
-            self.dist["mean_inf"] = []
-            self.dist["max_cos"] = []
-            self.dist["mean_cos"] = []
-            self.dist["range_cos"] = []
-            self.dist["age"] = []
-            self.dist["sex"] = []
-            self.dist["laterality"] = []
-            self.raw_dist["l2"] = []
-            self.raw_dist["l1"] = []
-            self.raw_dist["inf"] = []
-            self.raw_dist["cos"] = []
-            self.raw_dist["age"] = []
-        if self.save_frontal:
-            self.auc["overall"] = []
-            self.auc["frontal"] = []
-            if self.save_lateral:
-                self.auc["lateral"] = []
-            self.auc["index"] = []
-
+        pass
 
     def __computeMetrics(self,pool,query):
         """
@@ -240,41 +170,6 @@ class meanPred(torch.nn.Module):
         return ave_met
 
 
-    def calculate_statistics(self,x,idx):
-        emb = x.cpu().numpy()[:,:512]
-        is_frontal = x.cpu().numpy()[:,514]
-        idx_frontal = np.argwhere(is_frontal == 1).flatten()
-        l2_met = pdist(emb,'euclidean')
-        l1_met = pdist(emb,'minkowski',p=1.)
-        inf_met = pdist(emb,'chebyshev')
-        cos_met = pdist(emb,'cosine')
-        fro_met = pdist(emb[idx_frontal,:],'euclidean')
-        fro_cos_met = pdist(emb[idx_frontal,:],'cosine')
-        self.dist["max_fro"].append(np.max(fro_met))
-        self.dist["mean_fro"].append(np.mean(fro_met))
-        self.dist["range_fro"].append(np.max(fro_met)-np.min(fro_met))
-        self.dist["max_l2"].append(np.max(l2_met))
-        self.dist["mean_l2"].append(np.mean(l2_met))
-        self.dist["range_l2"].append(np.max(l2_met)-np.min(l2_met))
-        self.dist["max_fro_cos"].append(np.max(fro_cos_met))
-        self.dist["mean_fro_cos"].append(np.mean(fro_cos_met))
-        self.dist["range_fro_cos"].append(np.max(fro_cos_met)-np.min(fro_cos_met))
-        self.dist["max_l1"].append(np.max(l1_met))
-        self.dist["mean_l1"].append(np.mean(l1_met))
-        self.dist["max_inf"].append(np.max(inf_met))
-        self.dist["mean_inf"].append(np.mean(inf_met))
-        self.dist["max_cos"].append(np.max(cos_met))
-        self.dist["mean_cos"].append(np.mean(cos_met))
-        self.dist["range_cos"].append(np.max(cos_met)-np.min(cos_met))
-        self.raw_dist["l2"].append(l2_met)
-        self.raw_dist["l1"].append(l1_met)
-        self.raw_dist["inf"].append(inf_met)
-        self.raw_dist["cos"].append(cos_met)
-        self.raw_dist["age"].append(x.cpu().numpy()[:,513])
-        self.dist["sex"].append(np.mean(x.cpu().numpy()[:,512]))
-        self.dist["laterality"].append(np.mean(x.cpu().numpy()[:,514]))
-        self.dist["age"].append(np.mean(x.cpu().numpy()[:,513]))
-
     def get_wasserstein(self,otherPred,mean_age,std_age):
         wa_dist = {}
         wa_dist["l2"] = [wasserstein_distance(self.raw_dist["l2"][i], otherPred.raw_dist["l2"][i])
@@ -358,17 +253,6 @@ class meanPred(torch.nn.Module):
             # output [num_tasks, 1, num_in_pool], [num_tasks,1,1]
             not_negative_mask, num_negative = self.__getMask(selected_labels,"negative",mask = mask)
 
-            if self.save_metrics:
-                num_pos = num_positive.cpu().numpy().flatten()
-                num_neg = num_negative.cpu().numpy().flatten()
-                if mask is None:
-                    for i in range(selected.shape[0]):
-                        self.calculate_statistics(selected[i,:,:],i)
-                else:
-                    for i in range(selected.shape[0]):
-                        curr_mask = np.argwhere(mask.cpu().numpy()[i,:] == 1).flatten()
-                        self.calculate_statistics(selected[i,curr_mask,:],i)
-
             # Compute average of metrics for positive selected Xrays
             # output [num_tasks, num_in_query, 1]
             ave_met_positive = self.__getAvg(metric,not_positive_mask,num_positive)
@@ -381,10 +265,6 @@ class meanPred(torch.nn.Module):
                 score = torch.sub(ave_met_positive,ave_met_negative)
             else:
                 score = torch.sub(ave_met_negative,ave_met_positive)
-
-            if self.save_frontal:
-                for i in range(selected.shape[0]):
-                    self.get_auc(score[i,:],query_labels[i,:],query[i,:,514],i)
 
             if reward:
                 return torch.mean(score,dim = 2)

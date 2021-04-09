@@ -1,5 +1,6 @@
 import os
 import time
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -7,9 +8,7 @@ from utils import sample_once, collate_fn, evaluate, random_baseline
 from sklearn.metrics import roc_auc_score
 from constants import *
 from datasets.random_task_dataset import RandomTaskDataset
-from datasets.random_ova_dataset import RandomOvaDataset
 from models.lstm_selector import LSTMSelector
-from models.transformer_selector import TransformerSelector
 from models.predictor import meanPred
 
 def train_model(train_ld, val_ld, predictor, selector, save_path, num_epochs, lr, k):
@@ -27,11 +26,6 @@ def train_model(train_ld, val_ld, predictor, selector, save_path, num_epochs, lr
 	"""
 	optimizer = torch.optim.Adam(selector.parameters(), lr=lr)
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-	if torch.cuda.device_count() > 0: #works even if only 1 GPU available
-		print("Using", torch.cuda.device_count(), "GPUs!")
-		selector = nn.DataParallel(selector) #to utilize multiple GPU's
-	else:
-		print("Using CPU!")
 	selector = selector.to(device)
 	selector.train()
 
@@ -140,7 +134,7 @@ if __name__ == '__main__':
 			    val_ld=val_ld,
 			    predictor=predictor,
 			    selector=selector,
-			    save_path='/deep/u/akshaysm/ckpt/k=%d/' % k,
+			    save_path='/deep/u/akshaysm/ckpt',
 			    num_epochs=NUM_EPOCHS,
 			    lr=LEARNING_RATE,
 			    k=k)

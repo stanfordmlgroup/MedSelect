@@ -9,8 +9,6 @@ from datasets.random_task_dataset import RandomTaskDataset
 from sklearn.metrics import roc_auc_score
 from constants import *
 from models.lstm_selector import LSTMSelector
-from models.random_selector import RandomSelector
-from models.clustering_selector import ClusteringSelector
 from models.predictor import meanPred
 
 def random_baseline(data, predictor, sampling_size):
@@ -67,14 +65,6 @@ def collate_fn(task_list):
 	batch['query_labels'] = batch['query_labels'].long()
 	return batch
 
-def mean_ci(data, p=0.95):
-	"""Compute the confidence interval assuming data is normally distributed."""
-	a = 1.0 * np.array(data)
-	n = len(a)
-	m, se = np.mean(a), scipy.stats.sem(a)
-	h = se * scipy.stats.t.ppf((1 + p) / 2., n-1)
-	return m, m-h, m+h
-
 def sample_once(weights, k):
 	"""Sample from the logits output by a selector model.
 
@@ -126,65 +116,6 @@ def sample_once_numpy(weights, k):
 		idx.append(np.concatenate([[j]*x[j] for j in range(len(x))]))
 	idx = np.array(idx).astype(int)
 	return idx
-
-def compute_ci(ld, selector1_ckpt_path, selector1, selector2, predictor, k):
-	"""Computes the performance differences between selector1 and selector2 on
-           each task in the meta-test set, and produces the confidence interval. The
-           selector1 is assumed to be an lstm, selector2 is random/clustering.
-	"""
-	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-	if torch.cuda.device_count() > 0: #works even if only 1 GPU available
-		print("Using", torch.cuda.device_count(), "GPUs!")
-		selector1 = nn.DataParallel(selector1)
-		selector1 = selector1.to(device)
-		checkpoint = torch.load(selector1_ckpt_path)
-		selector1.load_state_dict(checkpoint['model_state_dict'])
-	else:
-		print("Using CPU!")
-		checkpoint = torch.load(selector1_ckpt_path, map_location=torch.device('cpu'))
-		new_state_dict = OrderedDict()
-		for q, v in checkpoint['model_state_dict'].items():
-			name = q[7:] # remove `module.`
-			new_state_dict[name] = v
-		selector1.load_state_dict(new_state_dict)
-
-	print()
-	print("Beginning ci computation")
-
-	was_training = selector1.training
-	selector1.eval()
-	np.random.seed(42)
-
-	#selector1_res is a list of scores for each meta-test task
-	selector1_res, cond_list = evaluate(ld, selector1, predictor, device, k, return_avg=False, numpy_sample=True)
-	cond_list = np.array(cond_list)
-
-	selector2_res = []
-	with torch.no_grad():
-		for i, data in enumerate(ld):
-			data['mask'] = selector2(data, num_to_select=k)
-			preds = predictor(data)
-			preds = preds.squeeze(dim=2) #(batch_size, query_set_size)
-
-			res = np.array([0]*data['query_labels'].shape[0]).astype(float)
-			for p in range(data['query_labels'].shape[0]):
-				res[p] = roc_auc_score(data['query_labels'][p,:],preds[p,:])
-			selector2_res.append(res)
-
-	if was_training:
-		selector1.train()
-
-	selector2_res = np.concatenate(selector2_res)
-	diff = selector1_res - selector2_res
-
-	all_conds = list(set(cond_list))
-	for cond in all_conds:
-		mask = cond_list == cond
-		m, lo, hi = mean_ci(diff[mask])
-		print(cond + ": ", "%.4f (%.4f, %.4f)" % (m, lo, hi))
-
-	m, lo, hi = mean_ci(diff)
-	print("Average: %.4f (%.4f, %.4f)" % (m, lo, hi))
 
 def evaluate(val_ld, selector, predictor, device, k, return_avg=False, numpy_sample=False):
 	"""Function to evaluate current model weights.
@@ -322,123 +253,6 @@ def test_selector(selector, predictor, selector_ckpt_path, test_ld, k):
 	print("Output written to file: "+filename+"\n")
 #	predictor.clear()
 
-def test_baseline(csv_path, output_path = None, sampling_size = [10,20,40,80,100,200,400,1000], seed = 42,
-                  selector = None, selector_mode = None, predictor = None, dset_all = None, out_mode = "both"):
-
-        if predictor == None:
-                print("ERROR! Need to specify a predictor!")
-                return 0
-
-        if dset_all == None:
-                print("ERROR! Need to specify a dataset!")
-                return 0
-
-        print("----------------------------------------------")
-        print("Calculation for "+csv_path)
-
-        ave_all = [0]*len(sampling_size)
-        std_all = [0]*len(sampling_size)
-        all_res = []  # Append DataFrames for each sampling_size w/ cols 'k', 'auroc', 'cond'
-
-        print("Conditions are: ")
-        print(dset_all.conditions_used)
-        print("Number of tasks is: %d\n" %(dset_all.num_tasks))
-
-        loader_all = torch.utils.data.DataLoader(dataset=dset_all, batch_size=BATCH_SIZE, collate_fn=collate_fn)
-
-        if selector_mode == "asl":
-                ssidx = 512
-                seidx = 515
-        elif selector_mode == "both":
-                ssidx = 0
-                seidx = 515
-        else:
-                ssidx = 0
-                seidx = 512
-
-        for j in range(len(sampling_size)):
-
-                res_list = {"metrics":[],"cond":[]}
-                res_cond = {}
-
-                for i, data in enumerate(loader_all):
-
-                        if selector is not None:
-                                if sampling_size[j] < UNLABELED_POOL_SIZE:
-                                        data['mask'] = selector({'pool_labels':data['pool_labels'],
-                                                                 'query':data['query'],
-                                                                 'query_labels':data['query_labels'],
-                                                                 'cond':data['cond'],
-                                                                 'pool':data['pool'][:,:,ssidx:seidx]}, sampling_size[j])
-                                else:
-                                        data['mask'] = torch.Tensor([1.0]*UNLABELED_POOL_SIZE)
-
-                        else:
-
-                                selected = np.zeros(data['pool_labels'].shape)
-
-                                np.random.seed(seed)
-
-                                for k in range(data['pool'].shape[0]):
-                                        selected_index = np.random.choice(range(dset_all.unlabeled_pool_size),sampling_size[j],replace = False)
-                                        selected[k,selected_index] = 1
-
-                                data['mask'] = torch.Tensor(selected)
-
-                        y_pred = predictor(data)
-
-                        res = [0]*data['query_labels'].shape[0]
-                        for x in range(data['query_labels'].shape[0]):
-                                res[x] = roc_auc_score(data['query_labels'][x,:],y_pred[x,:])
-                        res_list["metrics"] += res
-                        res_list["cond"] += data["cond"]
-
-                print("Now sampling %d X-rays.." %(sampling_size[j]))
-
-                ave_res = np.mean(np.array(res_list["metrics"]))
-                std_res = np.std(np.array(res_list["metrics"]))
-
-                df_res = pd.DataFrame(res_list).rename(columns={'metrics':'auroc'})
-
-                ave_all[j] = ave_res
-                std_all[j] = std_res
-
-                print("AUC Score mean: %.4f, standard deviation: %.4f" %(ave_res,std_res))
-
-                if out_mode == "both" or out_mode == "raw":
-                        filename = output_path+str(sampling_size[j])+".csv"
-                        output = df_res.groupby(['cond']).mean()
-                        output.to_csv(filename,index = False)
-                        print("Output written to file: "+filename+"\n")
-
-                statistics = predictor.dist
-                for key in statistics.keys():
-                        print("Mean for "+key+" is: %.4f"%(np.mean(np.array(statistics[key]))))
-                stat_output = pd.DataFrame.from_dict(statistics)
-                stat_output["cond"] = res_list["cond"]
-                filename = output_path+str(sampling_size[j])+"_stat.csv"
-                stat_output.to_csv(filename, index = False)
-                print("Output written to file: "+filename+"\n")
-
-#                statistics = predictor.FLdist
-#                for key in statistics.keys():
-#                        print("Mean for "+key+" is: %.4f"%(np.mean(np.array(statistics[key]))))
-#                stat_output = pd.DataFrame.from_dict(statistics)
-#                filename = output_path+str(sampling_size[j])+"_FLstat.csv"
-#                stat_output.to_csv(filename, index = False)
-#                print("Output written to file: "+filename+"\n")
-
-        if out_mode == "both" or out_mode == "overall":
-                res = {"sampling size": sampling_size,
-                       "average": ave_all,
-                       "std": std_all}
-                output = pd.DataFrame.from_dict(res)
-                filename = output_path+"overall.csv"
-                output.to_csv(filename,index = False)
-                print("Output written to file: "+filename)
-
-        print("Finishing calculation for "+csv_path)
-
 
 if __name__ == '__main__':
 	test_dset = RandomTaskDataset(positive_csv_path='/deep/group/activelearn/data/level1/meta_tst/holdout_positives.csv',
@@ -466,10 +280,3 @@ if __name__ == '__main__':
 	for k in K:
 		predictor = meanPred(mode = 'cosine')
 		print(f"\n\nRunning for K={k}")
-
-		compute_ci(test_ld,
-                           f'/deep/group/activelearn/lstm_selector/k={k}/ckpt/only_img/{best_models[k]}',
-                           selector,
-                           ClusteringSelector(),
-                           predictor,
-                           k=k)

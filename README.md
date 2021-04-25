@@ -37,7 +37,7 @@ GPU usage is required. By default, all available GPU's will be used.
 
 We use ~224316 chest X-rays from [CheXpert](https://arxiv.org/abs/1901.07031). We view X-rays with "Uncertain" labeling as positive for a given condition.
 
-We use image embeddings from [MoCo pretraining](https://arxiv.org/abs/2010.05352), developed by H Sowrirajan, J Yang, AY Ng, and P Rajpurkar. See [here](https://github.com/stanfordmlgroup/MoCo-CXR) for their full code release.
+We use image embeddings from [MoCo pretraining](https://arxiv.org/abs/2010.05352), developed by H. Sowrirajan, J. Yang, A. Ng, and P. Rajpurkar. See [here](https://github.com/stanfordmlgroup/MoCo-CXR) for their full code release.
 
 ## Usage
 
@@ -65,7 +65,7 @@ Run the following cell providing these arguments:
 python3 run_selector.py
 ```
 
-# Citation
+## Citation
 
 If you use MedSelect in your work, please cite our paper:
 

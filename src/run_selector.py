@@ -29,7 +29,7 @@ def train_model(train_ld, val_ld, predictor, selector, save_path, num_epochs, lr
 	selector = selector.to(device)
 	selector.train()
 
-	ssidx = 0 if USE_IMG else 512  # Start Index of Pool for Selector
+	ssidx = 0
 	seidx = 515 if USE_ASL else 512  # End Index of Pool for Selector
 
 	begin_time = time.time()
@@ -111,7 +111,8 @@ if __name__ == '__main__':
 				      query_pos_frac=QUERY_POS_FRAC,
 				      conditions_used=NON_HOLD_OUT,
 				      num_tasks=NUM_META_TRAIN_TASKS,
-				      deterministic=True)
+				      deterministic=True,
+					  use_asl=USE_ASL)
 	train_ld = torch.utils.data.DataLoader(dataset=train_dset, batch_size=BATCH_SIZE, collate_fn=collate_fn, num_workers=4)
 
 	val_dset = RandomTaskDataset(positive_csv_path='/deep/group/activelearn/data/level1/meta_val/positives.csv',
@@ -122,11 +123,12 @@ if __name__ == '__main__':
                                     query_pos_frac=QUERY_POS_FRAC,
                                     conditions_used=NON_HOLD_OUT,
                                     num_tasks=NUM_META_TEST_TASKS,
-                                    deterministic=True)
+                                    deterministic=True,
+									use_asl=USE_ASL)
 	val_ld = torch.utils.data.DataLoader(dataset=val_dset, batch_size=BATCH_SIZE, collate_fn=collate_fn, num_workers=4)
 
 	predictor = meanPred(mode = 'cosine')
-	selector = LSTMSelector(input_size=(USE_IMG*512 + USE_ASL*3))
+	selector = LSTMSelector(input_size=(512 + USE_ASL*3))
 
 	for k in K:
 		print(f"\n\nRunning for K={k}")

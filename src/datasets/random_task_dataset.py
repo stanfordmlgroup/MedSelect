@@ -4,6 +4,7 @@ import os
 import h5py
 import torch
 import torch.nn as nn
+from constants import USE_ASL
 from torch.utils.data import Dataset, DataLoader
 
 
@@ -16,7 +17,7 @@ class RandomTaskDataset(Dataset):
 
 	def __init__(self, positive_csv_path, normal_csv_path, unlabeled_pool_size, 
                      unlabeled_pos_frac, query_set_size, query_pos_frac, conditions_used, 
-                     num_tasks, deterministic=False, im_emb=True, age_sex_lat=False):
+                     num_tasks, deterministic=False, use_asl=False):
 		""" 
 		Initialize the Dataset object
 
@@ -30,8 +31,7 @@ class RandomTaskDataset(Dataset):
             	    conditions_used (List[string]): list of all conditions that can be used by this Dataset object
             	    num_tasks (int): the total number of tasks that will be sampled
 		    deterministic (bool): whether the task sampled is determined by the index fed in
-			im_emb (bool): whether the to use image (MoCo) embeddings as features
-			age_sex_lat (bool): whether to use age, sex, and laterality as feature
+			use_asl (bool): whether to use age, sex, and laterality as feature
 		"""
 		self.positive_csv = pd.read_csv(positive_csv_path)
 		self.normal_csv = pd.read_csv(normal_csv_path)
@@ -42,8 +42,7 @@ class RandomTaskDataset(Dataset):
 		self.conditions_used = conditions_used
 		self.num_tasks = num_tasks
 		self.deterministic = deterministic
-		self.im_emb = im_emb
-		self.age_sex_lat = age_sex_lat
+		self.use_asl = use_asl
 
 		pre, ext = os.path.splitext(positive_csv_path)
 		positive_hdf5_path = pre + ".hdf5"
@@ -97,8 +96,7 @@ class RandomTaskDataset(Dataset):
 		pos_labels = np.ones([num_pos])
 
 		# Age, Sex, Laterality
-		pos_embedding = np.concatenate((pos_embedding, get_age_sex_lat(self.positive_csv, pos_idx)), axis=1) if self.age_sex_lat else pos_embedding
-		pos_embedding = pos_embedding if self.im_emb else pos_embedding[:,-3:]
+		pos_embedding = np.concatenate((pos_embedding, get_age_sex_lat(self.positive_csv, pos_idx)), axis=1) if self.use_asl else pos_embedding
 
 		num_neg = self.unlabeled_pool_size - num_pos
 		neg_idx = np.random.choice(len(self.normal_csv), size=(num_neg), replace=False)
@@ -106,8 +104,7 @@ class RandomTaskDataset(Dataset):
 		neg_labels = np.zeros([num_neg])
 
 		# Age, Sex, Laterality
-		neg_embedding = np.concatenate((neg_embedding, get_age_sex_lat(self.normal_csv, neg_idx)), axis=1) if self.age_sex_lat else neg_embedding
-		neg_embedding = neg_embedding if self.im_emb else neg_embedding[:,-3:]
+		neg_embedding = np.concatenate((neg_embedding, get_age_sex_lat(self.normal_csv, neg_idx)), axis=1) if self.use_asl else neg_embedding
 
 		pool = np.concatenate([pos_embedding, neg_embedding], axis=0) #(pool_size, embedding_size)
 		pool_labels = np.concatenate([pos_labels, neg_labels], axis=0) #(pool_size)
@@ -128,8 +125,7 @@ class RandomTaskDataset(Dataset):
 		pos_labels = np.ones([num_pos])
 
 		# Age, Sex, Laterality
-		pos_embedding = np.concatenate((pos_embedding, get_age_sex_lat(self.positive_csv, idx)), axis=1) if self.age_sex_lat else pos_embedding
-		pos_embedding = pos_embedding if self.im_emb else pos_embedding[:,-3:]
+		pos_embedding = np.concatenate((pos_embedding, get_age_sex_lat(self.positive_csv, idx)), axis=1) if self.use_asl else pos_embedding
 
 		num_neg = self.query_set_size - num_pos
 		idx = range(len(self.normal_csv))
@@ -141,8 +137,7 @@ class RandomTaskDataset(Dataset):
 		neg_labels = np.zeros([num_neg])
 
 		# Age, Sex, Laterality
-		neg_embedding = np.concatenate((neg_embedding, get_age_sex_lat(self.normal_csv, idx)), axis=1) if self.age_sex_lat else neg_embedding
-		neg_embedding = neg_embedding if self.im_emb else neg_embedding[:,-3:]
+		neg_embedding = np.concatenate((neg_embedding, get_age_sex_lat(self.normal_csv, idx)), axis=1) if self.use_asl else neg_embedding
 
 		query = np.concatenate([pos_embedding, neg_embedding], axis=0) #(query_set_size, embedding_size)
 		query_labels = np.concatenate([pos_labels, neg_labels], axis=0) #(query_set_size)
@@ -167,8 +162,7 @@ if __name__ == '__main__':
                          	 query_pos_frac=0.7,
                          	 conditions_used=["Edema", "Atelectasis"],
                          	 num_tasks=50,
-				 im_emb=False,
-				 age_sex_lat=True)
+				 use_asl=USE_ASL)
 	res = dset[0]
 	print(res['cond'])
 	print(res['pool'].shape)

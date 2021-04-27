@@ -137,7 +137,7 @@ def evaluate(val_ld, selector, predictor, device, k, return_avg=False, numpy_sam
 	print()
 	print("Beginning validation epoch")
 
-	ssidx = 0 if USE_IMG else 512  # Start Index of Pool for Selector
+	ssidx = 0
 	seidx = 515 if USE_ASL else 512  # End Index of Pool for Selector
 
 	was_training = selector.training

@@ -11,7 +11,6 @@ NON_HOLD_OUT = ["Consolidation", "Lung Opacity", "Pleural Effusion", "Pneumothor
 ALL_COND = ["Consolidation", "Lung Opacity", "Pleural Effusion", "Pneumothorax",
             "Enlarged Cardiomediastinum", "Cardiomegaly", "Atelectasis", "Edema"]
 
-USE_IMG = True  # Whether to use Image as input to selector
 USE_ASL = False  # Whether to use Age Sex Laterality as input to selector
 
 #Selector training parameters

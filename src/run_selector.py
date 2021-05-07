@@ -105,6 +105,7 @@ def train_model(train_ld, val_ld, predictor, selector, save_path, num_epochs, lr
                                         
 def load_data(positive_csv_path, normal_csv_path, num_tasks, num_workers=4, deterministic=True):
         """Return a dataloader given positive and normal X-ray data.
+
         Args:
             positive_csv_path (string): path to csv containing data for X-ray images that are positive 
                                         for abnormalities
@@ -136,7 +137,8 @@ def load_data(positive_csv_path, normal_csv_path, num_tasks, num_workers=4, dete
                                        
 
 def train_helper(train_ld, val_ld, save_path):
-        """Train MedSelect for several values of k.
+        """Execute MedSelect training.
+
         Args:
             train_ld (torch.utils.data.DataLoader): dataloader for train data 
             val_ld (torch.utils.data.DataLoader): dataloader for test data

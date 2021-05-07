@@ -11,10 +11,9 @@ NON_HOLD_OUT = ["Consolidation", "Lung Opacity", "Pleural Effusion", "Pneumothor
 ALL_COND = ["Consolidation", "Lung Opacity", "Pleural Effusion", "Pneumothorax",
             "Enlarged Cardiomediastinum", "Cardiomegaly", "Atelectasis", "Edema"]
 
-USE_ASL = False  # Whether to use Age Sex Laterality as input to selector
-
 #Selector training parameters
 LEARNING_RATE = 1e-4
-K = [10, 20, 40, 80, 100, 200]  #how many X-rays to select from pool
+K = 20           # how many X-rays to select from pool
 NUM_EPOCHS = 5
 BATCH_SIZE = 64
+USE_ASL = False  # whether to use Age Sex Laterality as input to selector

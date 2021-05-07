@@ -102,41 +102,79 @@ def train_model(train_ld, val_ld, predictor, selector, save_path, num_epochs, lr
 						    'optimizer_state_dict': optimizer.state_dict()},
 						   path)
 
+                                        
+def load_data(positive_csv_path, normal_csv_path, num_tasks, num_workers=4, deterministic=True):
+        """Return a dataloader given positive and normal X-ray data.
+        Args:
+            positive_csv_path (string): path to csv containing data for X-ray images that are positive 
+                                        for abnormalities
+            normal_csv_path (string): path to csv containing data for X-ray images that are labeled
+                                      positive for "No Finding", meaning they are normal
+            num_tasks (int): number of tasks to sample for this dataset 
+            num_workers (int): number of worker threads to load the data
+            deterministic (bool): whether the tasks in a dataset are sampled deterministically. If
+                                  deterministic, the tasks used are the same across different epochs
+
+        Returns:
+            ld (torch.utils.data.DataLoader): dataloader for the given data
+        """
+        dset = RandomTaskDataset(positive_csv_path=positive_csv_path,
+                                 normal_csv_path=normal_csv_path,
+                                 unlabeled_pool_size=UNLABELED_POOL_SIZE,
+                                 unlabeled_pos_frac=UNLABELED_POS_FRAC,
+                                 query_set_size=QUERY_SET_SIZE,
+                                 query_pos_frac=QUERY_POS_FRAC,
+                                 conditions_used=NON_HOLD_OUT,
+                                 num_tasks=num_tasks,
+                                 deterministic=deterministic,
+                                 use_asl=USE_ASL)
+        ld = torch.utils.data.DataLoader(dataset=dset,
+                                         batch_size=BATCH_SIZE,
+                                         collate_fn=collate_fn,
+                                         num_workers=num_workers)
+        return ld
+                                       
+
+def train_helper(train_ld, val_ld, save_path):
+        """Train MedSelect for several values of k.
+        Args:
+            train_ld (torch.utils.data.DataLoader): dataloader for train data 
+            val_ld (torch.utils.data.DataLoader): dataloader for test data
+            save_path (string): directory in which checkpoints will be saved
+        """
+        predictor = meanPred(mode = 'cosine')
+        selector = LSTMSelector(input_size=(512 + USE_ASL*3))
+
+        print("\n\nRunning for K=%d" % K)
+        train_model(train_ld=train_ld,
+                    val_ld=val_ld,
+                    predictor=predictor,
+                    selector=selector,
+                    save_path=save_path,
+                    num_epochs=NUM_EPOCHS,
+                    lr=LEARNING_RATE,
+                    k=K)
+        
 if __name__ == '__main__':
-	train_dset = RandomTaskDataset(positive_csv_path='/deep/group/activelearn/data/level1/meta_train/positives.csv',
-				      normal_csv_path='/deep/group/activelearn/data/level1/meta_train/no_findings.csv',
-				      unlabeled_pool_size=UNLABELED_POOL_SIZE,
-				      unlabeled_pos_frac=UNLABELED_POS_FRAC,
-				      query_set_size=QUERY_SET_SIZE,
-				      query_pos_frac=QUERY_POS_FRAC,
-				      conditions_used=NON_HOLD_OUT,
-				      num_tasks=NUM_META_TRAIN_TASKS,
-				      deterministic=True,
-					  use_asl=USE_ASL)
-	train_ld = torch.utils.data.DataLoader(dataset=train_dset, batch_size=BATCH_SIZE, collate_fn=collate_fn, num_workers=4)
-
-	val_dset = RandomTaskDataset(positive_csv_path='/deep/group/activelearn/data/level1/meta_val/positives.csv',
-			            normal_csv_path='/deep/group/activelearn/data/level1/meta_val/no_findings.csv',
-				    unlabeled_pool_size=UNLABELED_POOL_SIZE,
-                                    unlabeled_pos_frac=UNLABELED_POS_FRAC,
-                                    query_set_size=QUERY_SET_SIZE,
-                                    query_pos_frac=QUERY_POS_FRAC,
-                                    conditions_used=NON_HOLD_OUT,
-                                    num_tasks=NUM_META_TEST_TASKS,
-                                    deterministic=True,
-									use_asl=USE_ASL)
-	val_ld = torch.utils.data.DataLoader(dataset=val_dset, batch_size=BATCH_SIZE, collate_fn=collate_fn, num_workers=4)
-
-	predictor = meanPred(mode = 'cosine')
-	selector = LSTMSelector(input_size=(512 + USE_ASL*3))
-
-	for k in K:
-		print(f"\n\nRunning for K={k}")
-		train_model(train_ld=train_ld,
-			    val_ld=val_ld,
-			    predictor=predictor,
-			    selector=selector,
-			    save_path='/deep/u/akshaysm/ckpt',
-			    num_epochs=NUM_EPOCHS,
-			    lr=LEARNING_RATE,
-			    k=k)
+        prs = argparse.ArgumentParser(description='Train a MedSelect model.')
+        prs.add_argument('--train_pos_csv', type=str, nargs='?', required=True,
+                         help='Path to training set csv containing data for X-rays that are positive for abnormalities')
+        prs.add_argument('--train_norm_csv', type=str, nargs='?', required=True,
+                         help='Path to training set csv containing data for X-rays that are positive for No Finding')
+        prs.add_argument('--val_pos_csv', type=str, nargs='?', required=True,
+                         help='Path to val set csv containing data for X-rays that are positive for abnormalities')
+        prs.add_argument('--val_norm_csv', type=str, nargs='?', required=True,
+                         help='Path to val set csv containing data for X-rays that are positive for No Finding')
+        prs.add_argument('--out', type=str, nargs='?', required=True,
+                         help='Path to directory in which checkpoints will be saved')
+        args = prs.parse_args()
+        
+        train_pos = args.train_pos_csv
+        train_norm = args.train_norm_csv
+        val_pos = args.val_pos_csv
+        val_norm = args.val_norm_csv
+        save_path = args.out
+        
+        train_ld = load_data(train_pos, train_norm, NUM_META_TRAIN_TASKS)
+        val_ld = load_data(val_pos, val_norm, NUM_META_TEST_TASKS)
+        train_helper(train_ld, val_ld, save_path)

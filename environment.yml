@@ -1,4 +1,4 @@
-name: active
+name: medselect
 channels:
   - pytorch
   - conda-forge

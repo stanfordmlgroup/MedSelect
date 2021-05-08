@@ -129,7 +129,3 @@ if __name__ == '__main__':
 	ckpt_path = arguments.checkpoint_path
 
 	xray_to_hdf5(csv_path, out_path, ckpt_path)
-
-	#xray_to_hdf5('/deep/group/activelearn/data/mimic-cxr/non_holdout_positives.csv',
-	#	     '/deep/u/akshaysm/temp.hdf5')
-

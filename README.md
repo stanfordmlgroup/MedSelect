@@ -44,7 +44,7 @@ We use image embeddings from [MoCo pretraining](https://arxiv.org/abs/2010.05352
 ### Convert Chest X-rays to Image Embeddings
 
 Run the following cell providing these arguments:
-1. path_to_input_data: path to the .csv file containing X-ray file paths.
+1. path_to_input_data: path to the .csv file containing X-ray file paths. The paths must be under the 'Path' column.
 2. output_path: path to intended output hdf5 file, e.g. "output.hdf5".
 3. path_to_moco_checkpoint: path to MoCo checkpoint. See [here](https://github.com/stanfordmlgroup/MoCo-CXR) for suggested checkpoints to use. The checkpoint we use can be downloaded [here](https://drive.google.com/file/d/1ouNsDFzovHRhmWi4uz6iCvXe7pO8D7P7/view?usp=sharing).
 
@@ -52,18 +52,22 @@ Run the following cell providing these arguments:
 python3 xray_to_hdf5.py -d path_to_input_data -o output_path -c path_to_moco_checkpoint
 ```
 
-### Train the Model - need to update argument lists
+### Train the Model 
 
-Run the following cell providing these arguments:
-1. path_to_train_positive: path to the .csv file containing positive X-ray file paths for training.
-2. path_to_train_nofinding: path to the .csv file containing no-finding X-ray file paths for training.
-3. path_to_val_positive: path to the .csv file containing positive X-ray file paths for validation.
-4. path_to_val_nofinding: path to the .csv file containing no-finding X-ray file paths for validation.
-5. use_asg: a boolean value specifying whether to use age, sex and laterality along with image embeddings during training.
+Run the following cell providing these arguments.
+1. train_pos_csv: path to the csv file (training set) containing X-ray file paths and condition labels, where the X-rays are positive for abnormalities. 
+2. train_norm_csv: path to the csv file (training set) containing X-ray file paths and condition labels, where the X-rays are positive for No Finding.
+3. val_pos_csv: path to the csv file (validation set) containing X-ray file paths and condition labels, where the X-rays are positive for abnormalities.
+4. val_norm_csv: path to the csv file (validation set) containing X-ray file paths and condition labels, where the X-rays are positive for No Finding.
+5. out: path to directory where checkpoints will be saved
 
 ```
-python3 run_selector.py
+python3 run_selector.py --train_pos_csv [path] --train_norm_csv [path] --val_pos_csv [path] --val_norm_csv [path] --out [path]
 ```
+
+All paths should be under the 'Path' column. Each csv file must be located in the same directory as the corresponding hdf5 file, and the csv must have the same name as the hdf5 file. For instance, train_pos.csv would correspond to train_pos.hdf5, and both must be located in the same directory. The hdf5 file can be produced using ```xray_to_hdf5.py```. 
+
+The learning rate, batch size, number of epochs, and K (number of X-rays selected for labeling) can be modified in ```constants.py```. If the ```USE_ASL``` flag in ```constants.py``` is set, MedSelect will use both the image as well as Age, Sex, and Laterality. The csv file arguments to ```run_selector.py``` must then contain the columns 'Age'. 'Sex' and 'Laterality'.
 
 ## Citation
 

@@ -46,7 +46,7 @@ We use image embeddings from [MoCo pretraining](https://arxiv.org/abs/2010.05352
 Run the following cell providing these arguments:
 1. path_to_input_data: path to the .csv file containing X-ray file paths.
 2. output_path: path to intended output hdf5 file, e.g. "output.hdf5".
-3. path_to_moco_checkpoint: path to MoCo checkpoint. See [here](https://github.com/stanfordmlgroup/MoCo-CXR) for suggested checkpoints to use. The checkpoint we use can be downloaded [here](https://github.com/stanfordmlgroup/MoCo-CXR) - need to update link to checkpoint.
+3. path_to_moco_checkpoint: path to MoCo checkpoint. See [here](https://github.com/stanfordmlgroup/MoCo-CXR) for suggested checkpoints to use. The checkpoint we use can be downloaded [here](https://drive.google.com/file/d/1ouNsDFzovHRhmWi4uz6iCvXe7pO8D7P7/view?usp=sharing).
 
 ```
 python3 xray_to_hdf5.py -d path_to_input_data -o output_path -c path_to_moco_checkpoint

@@ -67,7 +67,7 @@ python3 run_selector.py --train_pos_csv [path] --train_norm_csv [path] --val_pos
 
 All paths should be under the 'Path' column. Each csv file must be located in the same directory as the corresponding hdf5 file, and the csv must have the same name as the hdf5 file. For instance, train_pos.csv would correspond to train_pos.hdf5, and both must be located in the same directory. The hdf5 file can be produced using ```xray_to_hdf5.py```. 
 
-The learning rate, batch size, number of epochs, and K (number of X-rays selected for labeling) can be modified in ```constants.py```. If the ```USE_ASL``` flag in ```constants.py``` is set, MedSelect will use both the image as well as Age, Sex, and Laterality. The csv file arguments to ```run_selector.py``` must then contain the columns 'Age'. 'Sex' and 'Laterality'.
+The learning rate, batch size, number of epochs, and K (number of X-rays selected for labeling) can be modified in ```constants.py```. If the ```USE_ASL``` flag in ```constants.py``` is set, MedSelect will use both the image as well as Age, Sex and Laterality. The csv file arguments to ```run_selector.py``` must then also contain the columns 'Age', 'Sex' and 'Laterality'.
 
 ## Citation
 
